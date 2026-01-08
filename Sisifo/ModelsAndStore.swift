@@ -25,10 +25,14 @@ struct Habit: Identifiable, Codable, Equatable {
 /// - habits: your master list
 /// - doneByDate: dictionary of "YYYY-MM-DD" -> set of habit IDs completed that day
 /// - lastOpenedDateKey: used for reset logic
+/// - currentStreak: consecutive days with all habits completed
+/// - bestStreak: highest streak ever achieved
 struct AppState: Codable {
     var habits: [Habit] = []
     var doneByDate: [String: Set<UUID>] = [:]
     var lastOpenedDateKey: String = ""
+    var currentStreak: Int = 0
+    var bestStreak: Int = 0
 
     static func emptyWithDefaults() -> AppState {
         var s = AppState()
@@ -61,6 +65,30 @@ enum DateKey {
         formatter.dateStyle = .medium
         return formatter.string(from: Date())
     }
+    
+    /// Returns date for a given key string "YYYY-MM-DD"
+    static func date(from key: String) -> Date? {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar.current
+        formatter.locale = Locale.current
+        formatter.timeZone = TimeZone.current
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.date(from: key)
+    }
+    
+    /// Returns yesterday's date key
+    static func yesterday() -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar.current
+        formatter.locale = Locale.current
+        formatter.timeZone = TimeZone.current
+        formatter.dateFormat = "yyyy-MM-dd"
+        
+        guard let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date()) else {
+            return ""
+        }
+        return formatter.string(from: yesterday)
+    }
 }
 
 // MARK: - JSON Persistence
@@ -92,7 +120,7 @@ final class JSONStore {
             let data = try JSONEncoder().encode(state)
             try data.write(to: fileURL, options: [.atomic])
         } catch {
-            // In v1 we’ll fail silently; you can add logging later
+            // In v1 we'll fail silently; you can add logging later
         }
     }
 }
@@ -133,6 +161,10 @@ final class HabitStore: ObservableObject {
         var set = state.doneByDate[key] ?? []
         set.insert(habitID)
         state.doneByDate[key] = set
+        
+        // Check if all habits are now complete and update streak
+        checkAndUpdateStreak()
+        
         persist()
     }
 
@@ -149,8 +181,11 @@ final class HabitStore: ObservableObject {
 
         // If first launch or date changed, we "reset" by ensuring today's set exists and updating lastOpenedDateKey
         if state.lastOpenedDateKey != key {
+            // Before moving to new day, check if yesterday was complete
+            updateStreakForNewDay()
+            
             state.lastOpenedDateKey = key
-            // we do NOT delete past days — keeps door open for history later
+            // we do NOT delete past days – keeps door open for history later
             if state.doneByDate[key] == nil {
                 state.doneByDate[key] = []
             }
@@ -161,6 +196,51 @@ final class HabitStore: ObservableObject {
                 state.doneByDate[key] = []
                 persist()
             }
+        }
+    }
+
+    // MARK: - Streak Logic
+    
+    private func checkAndUpdateStreak() {
+        let today = todayKey()
+        guard let todayDone = state.doneByDate[today] else { return }
+        
+        // Only count as complete if ALL habits are done
+        let allHabitsCount = state.habits.count
+        guard allHabitsCount > 0 else { return }
+        
+        if todayDone.count == allHabitsCount {
+            // Today is complete! But we don't increment streak until tomorrow
+            // (streak is for consecutive COMPLETED days)
+            persist()
+        }
+    }
+    
+    private func updateStreakForNewDay() {
+        let yesterday = DateKey.yesterday()
+        guard !yesterday.isEmpty else { return }
+        
+        let allHabitsCount = state.habits.count
+        guard allHabitsCount > 0 else {
+            // No habits, reset streak
+            state.currentStreak = 0
+            return
+        }
+        
+        // Check if yesterday was complete
+        let yesterdayDone = state.doneByDate[yesterday]?.count ?? 0
+        
+        if yesterdayDone == allHabitsCount {
+            // Yesterday was complete, increment streak
+            state.currentStreak += 1
+            
+            // Update best streak if needed
+            if state.currentStreak > state.bestStreak {
+                state.bestStreak = state.currentStreak
+            }
+        } else {
+            // Streak broken
+            state.currentStreak = 0
         }
     }
 
@@ -233,6 +313,24 @@ struct ManageHabitsView: View {
                             .onMove(perform: store.moveHabits)
                         }
                         .frame(minHeight: 200)
+                    }
+                }
+                
+                Section("Stats") {
+                    HStack {
+                        Label("Current Streak", systemImage: "flame.fill")
+                        Spacer()
+                        Text("\(store.state.currentStreak) days")
+                            .foregroundStyle(.orange)
+                            .bold()
+                    }
+                    
+                    HStack {
+                        Label("Best Streak", systemImage: "trophy.fill")
+                        Spacer()
+                        Text("\(store.state.bestStreak) days")
+                            .foregroundStyle(.yellow)
+                            .bold()
                     }
                 }
             }

@@ -79,15 +79,43 @@ struct ContentView: View {
                 Text("\(doneCount)/\(total) done")
                     .font(.headline)
                 Spacer()
+                
+                // Streak indicator
+                HStack(spacing: 4) {
+                    Image(systemName: "flame.fill")
+                        .foregroundStyle(.orange)
+                    Text("\(store.state.currentStreak)")
+                        .font(.headline)
+                        .foregroundStyle(.orange)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.orange.opacity(0.15))
+                .clipShape(Capsule())
+            }
+            
+            HStack {
+                ProgressView(value: progress)
+                
                 Text(store.todayDisplayString())
-                    .font(.subheadline)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
-
-            ProgressView(value: progress)
+            
+            // Celebration message
+            if doneCount == total && total > 0 {
+                HStack {
+                    Text("🎉 All done today!")
+                        .font(.subheadline)
+                        .foregroundStyle(.green)
+                    Spacer()
+                }
+                .transition(.scale.combined(with: .opacity))
+            }
         }
         .padding(.horizontal)
         .padding(.top, 8)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: doneCount)
     }
 }
 
