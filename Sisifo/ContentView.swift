@@ -19,26 +19,19 @@ struct ContentView: View {
 
                 List {
                     ForEach(store.state.habits) { habit in
-                        HabitRow(
-                            title: habit.title,
-                            isDone: store.isDoneToday(habitID: habit.id)
+                        SwipeableHabitRow(
+                            habit: habit,
+                            isDone: store.isDoneToday(habitID: habit.id),
+                            onToggle: {
+                                if store.isDoneToday(habitID: habit.id) {
+                                    store.markUndoneToday(habitID: habit.id)
+                                } else {
+                                    store.markDoneToday(habitID: habit.id)
+                                }
+                            }
                         )
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button {
-                                store.markDoneToday(habitID: habit.id)
-                            } label: {
-                                Label("Done", systemImage: "checkmark")
-                            }
-                            .tint(.green)
-                        }
-                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                            Button {
-                                store.markUndoneToday(habitID: habit.id)
-                            } label: {
-                                Label("Undo", systemImage: "arrow.uturn.backward")
-                            }
-                            .tint(.orange)
-                        }
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowSeparator(.hidden)
                     }
 
                     if store.state.habits.isEmpty {
@@ -61,7 +54,6 @@ struct ContentView: View {
                 store.refreshForNewDayIfNeeded()
             }
             .onChange(of: scenePhase) { _, newPhase in
-                // When the app becomes active again, ensure day reset is correct
                 if newPhase == .active {
                     store.refreshForNewDayIfNeeded()
                 }
@@ -80,7 +72,6 @@ struct ContentView: View {
                     .font(.headline)
                 Spacer()
                 
-                // Streak indicator
                 HStack(spacing: 4) {
                     Image(systemName: "flame.fill")
                         .foregroundStyle(.orange)
@@ -102,7 +93,6 @@ struct ContentView: View {
                     .foregroundStyle(.secondary)
             }
             
-            // Celebration message
             if doneCount == total && total > 0 {
                 HStack {
                     Text("🎉 All done today!")
@@ -119,29 +109,90 @@ struct ContentView: View {
     }
 }
 
-private struct HabitRow: View {
-    let title: String
+private struct SwipeableHabitRow: View {
+    let habit: Habit
     let isDone: Bool
-
+    let onToggle: () -> Void
+    
+    @State private var offset: CGFloat = 0
+    @State private var isDragging = false
+    
+    private let swipeThreshold: CGFloat = 80
+    
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: isDone ? "checkmark.circle.fill" : "circle")
-                .foregroundStyle(isDone ? .green : .secondary)
+        ZStack(alignment: .leading) {
+            // The habit content
+            HStack(spacing: 12) {
+                Image(systemName: isDone ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(isDone ? .green : .secondary)
+                    .font(.title3)
 
-            Text(title)
-                .strikethrough(isDone, color: .secondary)
-                .foregroundStyle(isDone ? .secondary : .primary)
+                Text(habit.title)
+                    .strikethrough(isDone, color: .secondary)
+                    .foregroundStyle(isDone ? .secondary : .primary)
 
-            Spacer()
+                Spacer()
 
-            Text(isDone ? "Done" : "Swipe")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                Image(systemName: isDone ? "arrow.left" : "arrow.right")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .opacity(isDragging ? 1 : 0.3)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color(uiColor: .systemBackground))
+            .overlay(
+                // Shadow overlay that covers the content
+                Rectangle()
+                    .fill(isDone ? Color.orange.opacity(0.3) : Color.green.opacity(0.3))
+                    .opacity(abs(offset) / swipeThreshold)
+            )
+            .offset(x: offset)
+            .gesture(
+                DragGesture()
+                    .onChanged { gesture in
+                        isDragging = true
+                        let translation = gesture.translation.width
+                        
+                        // If done, only allow left swipe (undo)
+                        // If not done, only allow right swipe (complete)
+                        if isDone {
+                            offset = min(0, translation)
+                        } else {
+                            offset = max(0, translation)
+                        }
+                    }
+                    .onEnded { gesture in
+                        isDragging = false
+                        let translation = gesture.translation.width
+                        
+                        // Check if swipe exceeded threshold
+                        if isDone && translation < -swipeThreshold {
+                            // Undo
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                offset = 0
+                            }
+                            onToggle()
+                        } else if !isDone && translation > swipeThreshold {
+                            // Mark done
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                offset = 0
+                            }
+                            onToggle()
+                        } else {
+                            // Snap back
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                offset = 0
+                            }
+                        }
+                    }
+            )
         }
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(title)
+        .accessibilityLabel(habit.title)
         .accessibilityValue(isDone ? "Done" : "Not done")
+        .accessibilityHint(isDone ? "Swipe left to undo" : "Swipe right to mark done")
     }
 }
 
