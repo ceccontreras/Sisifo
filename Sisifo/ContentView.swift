@@ -121,7 +121,7 @@ private struct SwipeableHabitRow: View {
     
     var body: some View {
         ZStack(alignment: .leading) {
-            // The habit content
+            // The habit content (stays in place)
             HStack(spacing: 12) {
                 Image(systemName: isDone ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(isDone ? .green : .secondary)
@@ -141,54 +141,57 @@ private struct SwipeableHabitRow: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .background(Color(uiColor: .systemBackground))
-            .overlay(
-                // Shadow overlay that covers the content
-                Rectangle()
-                    .fill(isDone ? Color.orange.opacity(0.3) : Color.green.opacity(0.3))
-                    .opacity(abs(offset) / swipeThreshold)
-            )
-            .offset(x: offset)
-            .gesture(
-                DragGesture()
-                    .onChanged { gesture in
-                        isDragging = true
-                        let translation = gesture.translation.width
-                        
-                        // If done, only allow left swipe (undo)
-                        // If not done, only allow right swipe (complete)
-                        if isDone {
-                            offset = min(0, translation)
-                        } else {
-                            offset = max(0, translation)
-                        }
+            
+            // Color overlay that slides over the content
+            GeometryReader { geometry in
+                HStack(spacing: 0) {
+                    if isDone {
+                        Spacer()
+                        Rectangle()
+                            .fill(Color.orange.opacity(0.3))
+                            .frame(width: abs(offset))
+                    } else {
+                        Rectangle()
+                            .fill(Color.green.opacity(0.3))
+                            .frame(width: offset)
+                        Spacer()
                     }
-                    .onEnded { gesture in
-                        isDragging = false
-                        let translation = gesture.translation.width
-                        
-                        // Check if swipe exceeded threshold
-                        if isDone && translation < -swipeThreshold {
-                            // Undo
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                offset = 0
-                            }
-                            onToggle()
-                        } else if !isDone && translation > swipeThreshold {
-                            // Mark done
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                offset = 0
-                            }
-                            onToggle()
-                        } else {
-                            // Snap back
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                offset = 0
-                            }
-                        }
-                    }
-            )
+                }
+            }
+            .allowsHitTesting(false)
         }
         .contentShape(Rectangle())
+        .gesture(
+            DragGesture()
+                .onChanged { gesture in
+                    isDragging = true
+                    let translation = gesture.translation.width
+                    if isDone {
+                        offset = min(0, translation)
+                    } else {
+                        offset = max(0, translation)
+                    }
+                }
+                .onEnded { gesture in
+                    isDragging = false
+                    let translation = gesture.translation.width
+                    if isDone && translation < -swipeThreshold {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            offset = 0
+                        }
+                        onToggle()
+                    } else if !isDone && translation > swipeThreshold {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            offset = 0
+                        }
+                        onToggle()
+                    } else {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            offset = 0
+                        }
+                    }
+                }
+        )
         .accessibilityElement(children: .combine)
         .accessibilityLabel(habit.title)
         .accessibilityValue(isDone ? "Done" : "Not done")
