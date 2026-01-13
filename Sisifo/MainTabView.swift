@@ -53,15 +53,6 @@ struct MainTabView: View {
 
 // MARK: - Placeholder Views
 
-struct CalendarView: View {
-    var body: some View {
-        NavigationStack {
-            Text("Calendar View")
-                .navigationTitle("Calendar")
-        }
-    }
-}
-
 struct AddView: View {
     var body: some View {
         NavigationStack {
