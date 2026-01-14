@@ -281,42 +281,50 @@ final class HabitStore: ObservableObject {
 
 // MARK: - Manage Habits View
 
+// MARK: - Manage Habits View
+
 struct ManageHabitsView: View {
-    @ObservedObject var store: HabitStore
-    @Environment(\.dismiss) private var dismiss
+    @StateObject private var store = HabitStore()
     @State private var newHabitTitle: String = ""
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Add") {
+                Section("Add New Habit") {
                     HStack {
                         TextField("Example: Run 5 miles", text: $newHabitTitle)
-                        Button("Add") {
-                            store.addHabit(title: newHabitTitle)
-                            newHabitTitle = ""
+                            .submitLabel(.done)
+                            .onSubmit {
+                                addHabit()
+                            }
+                        
+                        Button {
+                            addHabit()
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .foregroundStyle(.orange)
+                                .font(.title2)
                         }
                         .disabled(newHabitTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
 
-                Section("Habits") {
+                Section("Your Habits") {
                     if store.state.habits.isEmpty {
-                        Text("No habits yet.")
+                        Text("No habits yet. Add your first habit above!")
                             .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding()
                     } else {
-                        List {
-                            ForEach(store.state.habits) { habit in
-                                Text(habit.title)
-                            }
-                            .onDelete(perform: store.deleteHabits)
-                            .onMove(perform: store.moveHabits)
+                        ForEach(store.state.habits) { habit in
+                            Text(habit.title)
                         }
-                        .frame(minHeight: 200)
+                        .onDelete(perform: store.deleteHabits)
+                        .onMove(perform: store.moveHabits)
                     }
                 }
                 
-                Section("Stats") {
+                Section("Streaks") {
                     HStack {
                         Label("Current Streak", systemImage: "flame.fill")
                         Spacer()
@@ -336,13 +344,15 @@ struct ManageHabitsView: View {
             }
             .navigationTitle("Manage Habits")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Close") { dismiss() }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     EditButton()
                 }
             }
         }
+    }
+    
+    private func addHabit() {
+        store.addHabit(title: newHabitTitle)
+        newHabitTitle = ""
     }
 }

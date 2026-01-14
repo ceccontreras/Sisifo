@@ -19,15 +19,15 @@ struct MainTabView: View {
                 }
                 .tag(0)
             
-            // Calendar - Placeholder for now
+            // Calendar
             CalendarView()
                 .tabItem {
                     Label("Calendar", systemImage: "calendar")
                 }
                 .tag(1)
             
-            // Add - Placeholder for now
-            AddView()
+            // Add - Now handles habit management
+            ManageHabitsView()
                 .tabItem {
                     Label("Add", systemImage: "plus.circle.fill")
                 }
@@ -47,20 +47,11 @@ struct MainTabView: View {
                 }
                 .tag(4)
         }
-        .accentColor(.orange) // Matches your streak color
+        .accentColor(.orange)
     }
 }
 
 // MARK: - Placeholder Views
-
-struct AddView: View {
-    var body: some View {
-        NavigationStack {
-            Text("Add New Item")
-                .navigationTitle("Add")
-        }
-    }
-}
 
 struct StatisticsView: View {
     var body: some View {

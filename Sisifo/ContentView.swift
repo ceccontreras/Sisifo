@@ -9,7 +9,6 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var store = HabitStore()
-    @State private var showingManageHabits = false
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -35,21 +34,15 @@ struct ContentView: View {
                     }
 
                     if store.state.habits.isEmpty {
-                        Text("No habits yet. Tap Manage to add your daily checklist.")
+                        Text("No habits yet. Tap the Add tab to create your daily checklist.")
                             .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding()
                     }
                 }
                 .listStyle(.insetGrouped)
             }
             .navigationTitle("Today")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Manage") { showingManageHabits = true }
-                }
-            }
-            .sheet(isPresented: $showingManageHabits) {
-                ManageHabitsView(store: store)
-            }
             .onAppear {
                 store.refreshForNewDayIfNeeded()
             }
