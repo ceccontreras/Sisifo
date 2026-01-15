@@ -29,7 +29,7 @@ struct MainTabView: View {
             // Add - Now handles habit management
             ManageHabitsView()
                 .tabItem {
-                    Label("Add", systemImage: "plus.circle.fill")
+                    Label("Habits", systemImage: "plus.circle.fill")
                 }
                 .tag(2)
             
@@ -52,15 +52,6 @@ struct MainTabView: View {
 }
 
 // MARK: - Placeholder Views
-
-struct StatisticsView: View {
-    var body: some View {
-        NavigationStack {
-            Text("Statistics View")
-                .navigationTitle("Statistics")
-        }
-    }
-}
 
 struct SettingsView: View {
     var body: some View {
