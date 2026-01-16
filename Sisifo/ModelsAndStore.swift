@@ -271,6 +271,21 @@ final class HabitStore: ObservableObject {
         state.habits.move(fromOffsets: source, toOffset: destination)
         persist()
     }
+    
+    /// Clear all completion history (doneByDate) but keep habits
+    func clearHistory() {
+        state.doneByDate = [:]
+        state.currentStreak = 0
+        state.bestStreak = 0
+        state.lastOpenedDateKey = DateKey.today()
+        persist()
+    }
+    
+    /// Reset app to fresh install state
+    func resetAllData() {
+        state = AppState.emptyWithDefaults()
+        persist()
+    }
 
     // MARK: - Persistence
 
@@ -278,8 +293,6 @@ final class HabitStore: ObservableObject {
         store.save(state)
     }
 }
-
-// MARK: - Manage Habits View
 
 // MARK: - Manage Habits View
 

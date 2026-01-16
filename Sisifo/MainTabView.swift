@@ -6,9 +6,11 @@
 //
 
 import SwiftUI
+import Combine
 
 struct MainTabView: View {
     @State private var selectedTab = 0
+    @StateObject private var settings = SettingsStore()
     
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -40,25 +42,15 @@ struct MainTabView: View {
                 }
                 .tag(3)
             
-            // Settings - Placeholder for now
-            SettingsView()
+            // Settings
+            SettingsView(settings: settings)
                 .tabItem {
                     Label("Settings", systemImage: "gearshape.fill")
                 }
                 .tag(4)
         }
-        .accentColor(.orange)
-    }
-}
-
-// MARK: - Placeholder Views
-
-struct SettingsView: View {
-    var body: some View {
-        NavigationStack {
-            Text("Settings View")
-                .navigationTitle("Settings")
-        }
+        .tint(settings.accent.color)
+        .preferredColorScheme(settings.theme.colorScheme)
     }
 }
 
